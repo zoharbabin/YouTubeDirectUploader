@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" 
+			   minWidth="955" minHeight="600" xmlns:youtube="com.zoharbabin.youtube.*">
+	<fx:Declarations>
+		<youtube:YouTubeDirectUpload id="ytUploader"  
+									 loginSuccess="ytUploader_loginSuccessHandler(event)"
+									 loginFailed="ytUploader_loginFailedHandler(event)"
+									 uploadComplete="ytUploader_uploadCompleteHandler(event)"
+									 uploadFailed="ytUploader_uploadFailedHandler(event)"
+									 appName="yourYouTubeApplicationName"
+									 developerKey="yourYouTubeAPIKey" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			
+			private function loginButtonClickHandler(event:MouseEvent):void {
+				ytUploader.youTubeLogin('youtubeemail@yourdomain.com', 'youtubepassword');
+			}
+			
+			private function uploadButtonClickHandler(event:MouseEvent):void {
+				if (!videoBytes) {
+					trace ("uploading from browse");
+					ytUploader.uploadBrowse();
+				} else {
+					trace ("uploading byteArray");
+					ytUploader.uploadByteArray(videoBytes);
+				}
+			}
+			
+			protected function ytUploader_loginSuccessHandler(event:Event):void
+			{
+				uploadBtn.enabled = true;
+				loadBtn.enabled = true;
+				trace('login success');
+			}
+			
+			
+			protected function ytUploader_loginFailedHandler(event:Event):void
+			{
+				uploadBtn.label = 'Can\'t upload, login failed';
+				trace('login failed');
+			}
+			
+			
+			protected function ytUploader_uploadCompleteHandler(event:Event):void
+			{
+				trace("upload completed successfully");
+			}
+			
+			
+			protected function ytUploader_uploadFailedHandler(event:Event):void
+			{
+				trace("upload failed");
+			}
+			
+			private var videoBytes:ByteArray;
+			private var fileReference:FileReference;
+			protected function loadBtn_clickHandler(event:MouseEvent):void
+			{
+				fileReference = new FileReference();
+				fileReference.addEventListener(Event.SELECT, fileSelectHandler, false, 0, true);
+				fileReference.addEventListener(Event.COMPLETE, uploadDataComplete, false, 0, true);
+				var videoFilter:FileFilter = new FileFilter("Video", "*.flv; *.wmv; *.mpeg; *.mpg; *.f4v; *.vp8; *.webm; *.3gp; *.mp4; *.mov; *.avi; *.mpegs; *.mpg; *.3gpp;");
+				fileReference.browse([videoFilter]);
+			}
+			private function fileSelectHandler(event:Event):void {
+				fileReference.load();
+			}
+			private function uploadDataComplete (event:Event):void {
+				videoBytes = fileReference.data;
+				trace("file bytes loaded, ready to upload byteArray");
+			}
+		]]>
+	</fx:Script>
+	<s:VGroup>
+		<s:Button click="loginButtonClickHandler(event)" label="Login" id="loginBtn"/>
+		<s:Button click="loadBtn_clickHandler(event)" label="Load Bytes" enabled="false" id="loadBtn" />
+		<s:Button click="uploadButtonClickHandler(event)" label="Upload" enabled="false" id="uploadBtn"/>
+	</s:VGroup>
+</s:Application>
