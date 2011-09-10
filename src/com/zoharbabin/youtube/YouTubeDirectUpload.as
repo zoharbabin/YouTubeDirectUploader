@@ -23,6 +23,7 @@ package com.zoharbabin.youtube
 	import flash.net.FileFilter;
 	import flash.net.FileReference;
 	import flash.net.URLLoader;
+	import flash.net.URLLoaderDataFormat;
 	import flash.net.URLRequest;
 	import flash.net.URLRequestHeader;
 	import flash.net.URLRequestMethod;
@@ -161,9 +162,21 @@ package com.zoharbabin.youtube
 		 **/
 		private var clientLoginUrl:String = 'https://www.google.com/accounts/ClientLogin';
 		/**
-		 * The url to YouTube's direct upload token service
+		 * The url to YouTube's direct upload token service.
 		 **/
 		private var uploadMethodUrl:String = 'http://gdata.youtube.com/action/GetUploadToken';
+		
+		/**
+		 * A gateway Url to avoid Google's poor crossdomain.xml file.
+		 **/
+		[Bindable]
+		public var gatewayUrl:String = 'ytapi/ytgateway.php';
+		
+		/**
+		 * A gateway Url for the upload service to avoid Google's poor crossdomain.xml file.
+		 **/
+		[Bindable]
+		public var gatewayUrlUpload:String = 'ytapi/savefileanduploadtoyt.php';
 		/**
 		 * Will be used to retrive the local file to upload and to upload
 		 **/
@@ -190,6 +203,26 @@ package com.zoharbabin.youtube
 			urlLoader.addEventListener(IOErrorEvent.IO_ERROR, authFailedHandler);
 			urlLoader.load(urlRequest);
 		}
+
+		/**
+		 * YouTube login call through a gateway (to avoid security issues), listen to loginSuccess and loginFailed to respond.
+		 **/
+		public function youTubeLoginGateway (yt_useremail:String, yt_password:String):void 
+		{
+			Security.loadPolicyFile('http://gdata.youtube.com/crossdomain.xml');
+			Security.loadPolicyFile('https://accounts.googleapis.com/crossdomain.xml');
+			youTubeUserEmail = yt_useremail;
+			youTubePassword = yt_password;
+			var body:String = 'yt_email='+youTubeUserEmail+'&yt_pass='+youTubePassword+'&yt_service=youtube&yt_appname='+appName;
+			var loginurl:String = gatewayUrl + '?' + body;
+			var urlRequest:URLRequest = new URLRequest(loginurl);
+			urlRequest.method = URLRequestMethod.GET;
+			var urlLoader:URLLoader = new URLLoader();
+			urlLoader.addEventListener(Event.COMPLETE, authCompleteHandler);
+			urlLoader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, authFailedHandler);
+			urlLoader.addEventListener(IOErrorEvent.IO_ERROR, authFailedHandler);
+			urlLoader.load(urlRequest);
+		}
 		
 		/**
 		 * login to YouTube was successful.
@@ -199,8 +232,13 @@ package com.zoharbabin.youtube
 			var result:String = urlLoader.data;
 			authKey = result.substr(result.indexOf('Auth=')+5);
 			authKey = StringUtil.trim(authKey); //'end of line' symbol at the end of the token messes up the API and returns 411
-			trace ('Got auth: '+authKey);
-			dispatchEvent(new Event("loginSuccess"));
+			authKey = authKey.substring("auth string is:".length,authKey.length);
+			if (authKey.length > 6) {
+				trace ('Got auth: '+authKey);
+				dispatchEvent(new Event("loginSuccess"));
+			} else {
+				dispatchEvent(new Event("loginFailed"));
+			}
 		}
 		
 		/**
@@ -257,7 +295,52 @@ package com.zoharbabin.youtube
 			_isUploadCompleted = false;
 			isFileLoaded = true;
 			videoBytes = video_bytes;
-			createAtomFeed();
+			//createAtomFeed();
+			gatewayUpload ();
+		}
+		
+		/**
+		 * It might be required to use a gateway to overcome Google's crossdomain issues,
+		 * use this function if you experience issues with security and setup a gateway on your server.
+		 * @see savefileanduploadtoyt.php
+		 * @see ytupload.php
+		 **/
+		public function gatewayUpload ():void {
+			//savefileanduploadtoyt.php
+			var req:URLRequest;
+			var loader:URLLoader = new URLLoader();
+			loader.dataFormat = URLLoaderDataFormat.BINARY;
+			req = new URLRequest(gatewayUrlUpload + "?email="+youTubeUserEmail + 
+													"&pass="+youTubePassword +
+													"&title="+ytVideoName +
+													"&desc="+ytVideoDescription +
+													"&tags="+ytKeywords + 
+													"&cat="+ytVideoCategory +
+													"&devtags="+developerTag );
+			req.method = URLRequestMethod.POST;
+			req.contentType = 'application/octet-stream';
+			req.data = videoBytes;
+			loader.addEventListener(Event.COMPLETE, gatewayComplete);
+			loader.addEventListener(IOErrorEvent.IO_ERROR, gatewayIOError);
+			loader.load(req);
+		}
+		
+		/**
+		 * Success handler for the gateway upload.
+		 **/
+		private function gatewayComplete(event:Event):void {
+			var msg:String = event.target.data;
+			trace ("gatewayComplete: "+msg);
+			_isUploadCompleted = true;
+			dispatchEvent(new Event("uploadComplete"));
+		}
+		
+		/**
+		 * Error handler for the gateway upload.
+		 **/
+		private function gatewayIOError(event:IOErrorEvent):void {
+			trace('An error occurred (gatewayIOError): ' + event.text);
+			dispatchEvent(new Event("uploadFailed"));
 		}
 		
 		/**
