@@ -312,11 +312,11 @@ package com.zoharbabin.youtube
 			loader.dataFormat = URLLoaderDataFormat.BINARY;
 			req = new URLRequest(gatewayUrlUpload + "?email="+youTubeUserEmail + 
 													"&pass="+youTubePassword +
-													"&title="+ytVideoName +
-													"&desc="+ytVideoDescription +
-													"&tags="+ytKeywords + 
-													"&cat="+ytVideoCategory +
-													"&devtags="+developerTag );
+													"&title="+encodeURIComponent(ytVideoName) +
+													"&desc="+encodeURIComponent(ytVideoDescription) +
+													"&tags="+encodeURIComponent(ytKeywords) + 
+													"&cat="+encodeURIComponent(ytVideoCategory) +
+													"&devtags="+encodeURIComponent(developerTag) );
 			req.method = URLRequestMethod.POST;
 			req.contentType = 'application/octet-stream';
 			req.data = videoBytes;
@@ -350,12 +350,12 @@ package com.zoharbabin.youtube
 			// Obviously, this shouldn't be hardcoded in a real application!
 			var atom:String = '<?xml version="1.0"?>';
 			atom += '<entry xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/" xmlns:yt="http://gdata.youtube.com/schemas/2007">';
-			atom += '<media:group><media:title type="plain">'+ytVideoName+'</media:title>';
-			atom += '<media:description type="plain">'+ytVideoDescription+'</media:description>';
-			atom += '<media:category scheme="http://gdata.youtube.com/schemas/2007/categories.cat">'+ytVideoCategory+'</media:category>';
+			atom += '<media:group><media:title type="plain">'+encodeURIComponent(ytVideoName)+'</media:title>';
+			atom += '<media:description type="plain">'+encodeURIComponent(ytVideoDescription)+'</media:description>';
+			atom += '<media:category scheme="http://gdata.youtube.com/schemas/2007/categories.cat">'+encodeURIComponent(ytVideoCategory)+'</media:category>';
 			// Developer tags are not user-visible and provide an easy way for you to find videos uploaded with your developer key.
-			atom += '<media:category scheme="http://gdata.youtube.com/schemas/2007/developertags.cat">'+developerTag+'</media:category>';
-			atom += '<media:keywords>'+ytKeywords+'</media:keywords></media:group></entry>';
+			atom += '<media:category scheme="http://gdata.youtube.com/schemas/2007/developertags.cat">'+encodeURIComponent(developerTag)+'</media:category>';
+			atom += '<media:keywords>'+encodeURIComponent(ytKeywords)+'</media:keywords></media:group></entry>';
 			
 			var client:HttpClient = new HttpClient();
 			var uri:URI = new URI(uploadMethodUrl);
